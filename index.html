@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Price Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <header class="hero">
+    <div class="hero-content">
+      <span class="badge">Machine Learning · Linear Regression</span>
+      <h1>Sales Price Prediction</h1>
+      <p>Predict product sales from TV, Radio, and Newspaper advertising spend using your trained model.</p>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar panel">
+      <h2>Model Details</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="label">Algorithm</span>
+          <span class="value">Multiple Linear Regression</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Target</span>
+          <span class="value">Sales (units)</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Records</span>
+          <span class="value">{{ model_info.dataset.records }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Avg Sales</span>
+          <span class="value">{{ model_info.dataset.avg_sales }} units</span>
+        </div>
+      </div>
+
+      <h3>Regression Equation</h3>
+      <pre class="equation">Sales = {{ "%.4f"|format(model_info.intercept) }}
+      + {{ "%.4f"|format(model_info.coefficients.TV) }} × TV
+      + {{ "%.4f"|format(model_info.coefficients.Radio) }} × Radio
+      + {{ "%.4f"|format(model_info.coefficients.Newspaper) }} × Newspaper</pre>
+
+      <h3>Quick Presets</h3>
+      <div class="preset-buttons">
+        <button type="button" class="preset-btn" data-tv="50" data-radio="10" data-newspaper="15">Low Budget</button>
+        <button type="button" class="preset-btn" data-tv="150" data-radio="25" data-newspaper="30">Balanced Mix</button>
+        <button type="button" class="preset-btn" data-tv="250" data-radio="15" data-newspaper="10">TV Focused</button>
+        <button type="button" class="preset-btn" data-tv="280" data-radio="45" data-newspaper="80">High Spend</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <div class="panel input-panel">
+        <div class="panel-header">
+          <h2>Advertising Investment</h2>
+          <p>Adjust spend for each channel or pick a preset.</p>
+        </div>
+
+        <form id="predict-form">
+          <div class="channel-card" data-channel="TV">
+            <div class="channel-head">
+              <span class="channel-icon tv">TV</span>
+              <div>
+                <h3>TV Advertising</h3>
+                <span class="channel-value">$<span id="tv-display">150.0</span></span>
+              </div>
+            </div>
+            <input type="range" id="tv" name="TV" min="{{ ranges.TV[0] }}" max="{{ ranges.TV[1] }}" step="0.1" value="150">
+            <div class="range-labels">
+              <span>${{ ranges.TV[0] }}</span>
+              <span>${{ ranges.TV[1] }}</span>
+            </div>
+          </div>
+
+          <div class="channel-card" data-channel="Radio">
+            <div class="channel-head">
+              <span class="channel-icon radio">RD</span>
+              <div>
+                <h3>Radio Advertising</h3>
+                <span class="channel-value">$<span id="radio-display">40.0</span></span>
+              </div>
+            </div>
+            <input type="range" id="radio" name="Radio" min="{{ ranges.Radio[0] }}" max="{{ ranges.Radio[1] }}" step="0.1" value="40">
+            <div class="range-labels">
+              <span>${{ ranges.Radio[0] }}</span>
+              <span>${{ ranges.Radio[1] }}</span>
+            </div>
+          </div>
+
+          <div class="channel-card" data-channel="Newspaper">
+            <div class="channel-head">
+              <span class="channel-icon paper">NP</span>
+              <div>
+                <h3>Newspaper Advertising</h3>
+                <span class="channel-value">$<span id="newspaper-display">20.0</span></span>
+              </div>
+            </div>
+            <input type="range" id="newspaper" name="Newspaper" min="{{ ranges.Newspaper[0] }}" max="{{ ranges.Newspaper[1] }}" step="0.1" value="20">
+            <div class="range-labels">
+              <span>${{ ranges.Newspaper[0] }}</span>
+              <span>${{ ranges.Newspaper[1] }}</span>
+            </div>
+          </div>
+
+          <div class="total-spend">
+            Total advertising spend: <strong id="total-spend">$210.00</strong>
+          </div>
+
+          <button type="submit" class="predict-btn">Predict Sales</button>
+        </form>
+      </div>
+
+      <div class="results-column">
+        <div class="panel result-panel">
+          <div class="panel-header">
+            <h2>Predicted Outcome</h2>
+          </div>
+
+          <div class="prediction-card">
+            <span class="prediction-label">Expected Sales</span>
+            <div class="prediction-value" id="prediction-value">—</div>
+            <span class="prediction-unit">units</span>
+          </div>
+
+          <div class="metrics-row">
+            <div class="metric-box">
+              <span class="metric-label">vs Dataset Avg</span>
+              <span class="metric-value" id="vs-average">—</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-label">Sales per $1</span>
+              <span class="metric-value" id="sales-per-dollar">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <h2>Channel Contribution</h2>
+            <p>Estimated impact on predicted sales</p>
+          </div>
+          <div class="bar-chart" id="contribution-chart">
+            <div class="bar-row">
+              <span class="bar-name">TV</span>
+              <div class="bar-track"><div class="bar-fill tv" id="bar-tv" style="width: 0%"></div></div>
+              <span class="bar-amount" id="contrib-tv">0</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-name">Radio</span>
+              <div class="bar-track"><div class="bar-fill radio" id="bar-radio" style="width: 0%"></div></div>
+              <span class="bar-amount" id="contrib-radio">0</span>
+            </div>
+            <div class="bar-row">
+              <span class="bar-name">Newspaper</span>
+              <div class="bar-track"><div class="bar-fill paper" id="bar-newspaper" style="width: 0%"></div></div>
+              <span class="bar-amount" id="contrib-newspaper">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Powered by <code>sales_prediction.pkl</code> · Flask API
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
